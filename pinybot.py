@@ -255,10 +255,14 @@ class TinychatBot(pinylib.TinychatRTMPClient):
                     return
 
             if len(CONFIG['welcome_broadcast_msg']) > 0:
-                if len(name) is 2:
-                    name = special_unicode['no_width'] + name + special_unicode['no_width']
-                self.send_bot_msg(CONFIG['welcome_broadcast_msg'] + ' *' + name + '*', self.is_client_mod)
-
+            broadcast_msg = CONFIG['welcome_broadcast_msg']
+		
+            if '%user%' in broadcast_msg:
+                broadcast_msg = broadcast_msg.replace('%user%', name)
+            if '%room%' in broadcast_msg:
+                broadcast_msg = broadcast_msg.replace('%room%', self.roomname.upper())
+			
+            self.send_bot_msg(broadcast_msg, self.is_client_mod)
             self.console_write(pinylib.COLOR['cyan'], '%s:%s is broadcasting.' % (name, uid))
 
     def auto_pm(self, nickname):
