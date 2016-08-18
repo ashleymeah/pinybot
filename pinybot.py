@@ -161,6 +161,8 @@ class TinychatBot(pinylib.TinychatRTMPClient):
     syncing = False
     pmming_all = False
     snap_line = 'I just took a video snapshot of this chatroom. Check it out here:'
+    lastplayed = 'none'
+    lastplayedarg = ''
 
     def on_join(self, join_info_dict):
         log.info('User join info: %s' % join_info_dict)
@@ -255,14 +257,14 @@ class TinychatBot(pinylib.TinychatRTMPClient):
                     return
 
             if len(CONFIG['welcome_broadcast_msg']) > 0:
-            broadcast_msg = CONFIG['welcome_broadcast_msg']
-		
-            if '%user%' in broadcast_msg:
-                broadcast_msg = broadcast_msg.replace('%user%', name)
-            if '%room%' in broadcast_msg:
-                broadcast_msg = broadcast_msg.replace('%room%', self.roomname.upper())
+				broadcast_msg = CONFIG['welcome_broadcast_msg']
 			
-            self.send_bot_msg(broadcast_msg, self.is_client_mod)
+				if '%user%' in broadcast_msg:
+					broadcast_msg = broadcast_msg.replace('%user%', name)
+				if '%room%' in broadcast_msg:
+					broadcast_msg = broadcast_msg.replace('%room%', self.roomname.upper())
+				
+				self.send_bot_msg(broadcast_msg, self.is_client_mod)
             self.console_write(pinylib.COLOR['cyan'], '%s:%s is broadcasting.' % (name, uid))
 
     def auto_pm(self, nickname):
@@ -739,11 +741,14 @@ class TinychatBot(pinylib.TinychatRTMPClient):
                 threading.Thread(target=self.do_user_info, args=(cmd_arg, )).start()
 
             # Standard media commands:
+            elif cmd == CONFIG['prefix'] + 'replay':
+				threading.Thread(target=self.do_replay_media).start()
+			
             elif cmd == CONFIG['prefix'] + 'yt':
-                threading.Thread(target=self.do_play_media, args=(self.yt_type, cmd_arg, )).start()
+				threading.Thread(target=self.do_play_media, args=(self.yt_type, cmd_arg, )).start()
 
             elif cmd == CONFIG['prefix'] + 'sc':
-                threading.Thread(target=self.do_play_media, args=(self.sc_type, cmd_arg, )).start()
+				threading.Thread(target=self.do_play_media, args=(self.sc_type, cmd_arg, )).start()
 
             elif cmd == CONFIG['prefix'] + 'syncall':
                 threading.Thread(target=self.do_sync_media).start()
@@ -1856,6 +1861,15 @@ class TinychatBot(pinylib.TinychatRTMPClient):
             else:
                 self.send_bot_msg('Not enabled right now.')
 
+    def do_replay_media(self):
+        """
+        Replays the last played media
+        """
+        if self.lastplayed == self.yt_type:
+            threading.Thread(target=self.do_play_media, args=(self.yt_type, self.lastplayedarg, )).start()
+        elif self.lastplayed == self.sc_type:
+            threading.Thread(target=self.do_play_media, args=(self.sc_type, self.lastplayedarg, )).start()
+
     def do_play_media(self, media_type, search_str):
         """
         Plays a youTube or soundCloud video matching the search term.
@@ -1867,8 +1881,12 @@ class TinychatBot(pinylib.TinychatRTMPClient):
                 type_str = ''
                 if media_type == self.yt_type:
                     type_str = 'YouTube'
+                    self.lastplayed = self.yt_type
+                    self.lastplayedarg = search_str
                 elif media_type == self.sc_type:
                     type_str = 'SoundCloud'
+                    self.lastplayed = self.sc_type
+                    self.lastplayedarg = search_str
 
                 if len(search_str) is 0:
                     self.send_bot_msg(
